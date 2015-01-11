@@ -65,6 +65,32 @@ def bin_dist(dist, bin_length):
     new_dist[(int(math.ceil(k / bin_length) + 1) * bin_length)] += v
   return new_dist
 
+def binned_sample_dist(n, probability_function, bin_size):
+  return dist_percentages(bin_dist(chain_distribution(n, probability_function), bin_size))
+
+def dist_cdf(dist):
+  cum_sum = 0
+  for k in sorted(dist.keys()):
+    this_sum = cum_sum + dist[k]
+    cum_sum = this_sum
+    dist[k] = this_sum
+  return dist
+
+def sample_dist_rmse(sample_dist, null_dist):
+  sample_dist, null_dist = fill_dist_keys(sample_dist, null_dist)
+  return dist_rmse(sample_dist, null_dist)
+
+def kolmogorov_two_sample(dist1, dist1_n, dist2, dist2_n, c_alpha):
+  max_stat = max(abs(dist1[k] - dist2[k]) for k in dist1)
+  return max_stat > c_alpha * pow(float(dist1_n + dist2_n) / (dist1_n * dist2_n), 0.5)
+
+def count_sample_dists_worse_than(num_dists, dist_size, test_err, null_dist, probability_function, bin_size):
+  higher_error_count = 0
+  for _ in xrange(num_dists):
+    if sample_dist_rmse(binned_sample_dist(dist_size, probability_function, bin_size), null_dist) >= test_err:
+      higher_error_count += 1
+  return higher_error_count
+
 # reddit data, binned into 20s.
 test_dist = collections.Counter({
   20: 6,
@@ -89,7 +115,8 @@ test_shinies = sum(test_dist[k] for k in test_dist)
 test_dist = dist_percentages(test_dist)
 
 # null hypothesis, that shiny encounter rate is dependent on chain length
-null_dist = chain_distribution(10000, shiny_probability_dependent)
+null_dist_size = 1000000
+null_dist = chain_distribution(null_dist_size, shiny_probability_dependent)
 
 # bin null hypothesis into 20-length bins and convert to percentages.
 null_dist = dist_percentages(bin_dist(null_dist, 20))
@@ -101,11 +128,8 @@ test_dist,null_dist = fill_dist_keys(test_dist, null_dist)
 test_err = dist_rmse(test_dist, null_dist)
 
 # generate sample distributions of length test_shinies and see what % have an error rate at least that of our experimental data.
-higher_error_count = 0
-for _ in xrange(1000):
-  temp_dist = dist_percentages(bin_dist(chain_distribution(test_shinies, shiny_probability_dependent), 20))
-  temp_dist,null_dist = fill_dist_keys(temp_dist, null_dist)
-  if dist_rmse(temp_dist, null_dist) >= test_err:
-    higher_error_count += 1
+print str(count_sample_dists_worse_than(10000, test_shinies, test_err, null_dist, shiny_probability_dependent, 20)) + " out of 1000 distributions were further off the null hypothesis than our experimental data."
 
-print str(higher_error_count) + " out of 1000 distributions were further off the null hypothesis than our experimental data."
+# run kolmogorov two-sample test at alpha = .001
+print "Kolmogorov two sample test: should we reject null hypothesis?"
+print kolmogorov_two_sample(null_dist, null_dist_size, test_dist, test_shinies, 1.95)
