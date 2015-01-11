@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
+import math
 import random
 
 def shiny_probability_binomial(chain_length):
@@ -57,7 +58,14 @@ def output_chain_dist(dists, filename):
     for k in xrange(1, max_key+1):
       dist_file.write(','.join([str(k)] + [str(dist[k]) if k in dist else '0' for dist in dists]) + '\n')
 
-# reddit data.
+def bin_dist(dist, bin_length):
+  # bins a distribution into bin_length-length bins.
+  new_dist = collections.Counter()
+  for k,v in dist.iteritems():
+    new_dist[(int(math.ceil(k / bin_length) + 1) * bin_length)] += v
+  return new_dist
+
+# reddit data, binned into 20s.
 test_dist = collections.Counter({
   20: 6,
   40: 6,
@@ -81,7 +89,10 @@ test_shinies = sum(test_dist[k] for k in test_dist)
 test_dist = dist_percentages(test_dist)
 
 # null hypothesis, that shiny encounter rate is dependent on chain length
-null_dist = dist_percentages(chain_distribution(10000, shiny_probability_dependent))
+null_dist = chain_distribution(10000, shiny_probability_dependent)
+
+# bin null hypothesis into 20-length bins and convert to percentages.
+null_dist = dist_percentages(bin_dist(null_dist, 20))
 
 # fill test_dist and null_dist with 0-keys.
 test_dist,null_dist = fill_dist_keys(test_dist, null_dist)
@@ -92,7 +103,7 @@ test_err = dist_rmse(test_dist, null_dist)
 # generate sample distributions of length test_shinies and see what % have an error rate at least that of our experimental data.
 higher_error_count = 0
 for _ in xrange(1000):
-  temp_dist = dist_percentages(chain_distribution(test_shinies, shiny_probability_dependent))
+  temp_dist = dist_percentages(bin_dist(chain_distribution(test_shinies, shiny_probability_dependent), 20))
   temp_dist,null_dist = fill_dist_keys(temp_dist, null_dist)
   if dist_rmse(temp_dist, null_dist) >= test_err:
     higher_error_count += 1
