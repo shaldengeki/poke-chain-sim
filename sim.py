@@ -50,7 +50,7 @@ def fill_dist_keys(dist1, dist2):
 def dist_rmse(dist1, dist2):
   # root mean squared error of dist1, taking dist2 as a baseline.
   # assumes dist1 and dist2 are filled to have the same keys.
-  return pow(sum(pow(dist1[k] - dist2[k], 2) for k in dist1) / float(len(dist)), 0.5)
+  return pow(sum(pow(dist1[k] - dist2[k], 2) for k in dist1) / float(len(dist1)), 0.5)
 
 def output_chain_dist(dists, filename):
   with open(filename, 'w') as dist_file:
@@ -115,7 +115,7 @@ test_shinies = sum(test_dist[k] for k in test_dist)
 test_dist = dist_percentages(test_dist)
 
 # null hypothesis, that shiny encounter rate is dependent on chain length
-null_dist_size = 1000000
+null_dist_size = 10000
 null_dist = chain_distribution(null_dist_size, shiny_probability_dependent)
 
 # bin null hypothesis into 20-length bins and convert to percentages.
